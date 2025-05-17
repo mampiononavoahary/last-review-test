@@ -1,9 +1,11 @@
 name: Rerun checks after review
+
 on:
   pull_request_review:
     types:
       - submitted
       - dismissed
+
 jobs:
   rerun-checks:
     name: Rerun specified checks
@@ -14,5 +16,21 @@ jobs:
       - name: Rerun checks
         uses: actions/github-script@v6
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          check-names: "Code review"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const checksToRerun = ["Code review"];
+            const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event: 'pull_request'
+            });
+
+            for (const run of runs.workflow_runs) {
+              if (checksToRerun.includes(run.name)) {
+                await github.rest.actions.reRunWorkflow({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.id
+                });
+              }
+            }
